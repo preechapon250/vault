@@ -9,13 +9,15 @@ import { setupApplicationTest } from 'ember-qunit';
 import { login } from 'vault/tests/helpers/auth/auth-helpers';
 import { GENERAL } from 'vault/tests/helpers/general-selectors';
 import { createNS, deleteNS, runCmd } from 'vault/tests/helpers/commands';
+import localStorage from 'vault/lib/local-storage';
 
 module('Acceptance | Enterprise | /access/namespaces', function (hooks) {
   setupApplicationTest(hooks);
 
   hooks.beforeEach(async () => {
     await login();
-
+    // dismiss the wizard
+    localStorage.setItem('dismissed-wizards', ['namespace']);
     // Go to the manage namespaces page
     await visit('/vault/access/namespaces');
   });
@@ -31,8 +33,11 @@ module('Acceptance | Enterprise | /access/namespaces', function (hooks) {
   });
 
   test('the route displays the breadcrumb trail', async function (assert) {
-    assert.dom(GENERAL.breadcrumb).exists({ count: 1 }, 'Only one breadcrumb is displayed');
-    assert.dom(GENERAL.breadcrumb).hasText('Namespaces', 'Breadcrumb trail is displayed correctly');
+    assert.dom(GENERAL.breadcrumb).exists({ count: 2 }, 'Only two breadcrumb is displayed');
+    assert.dom(GENERAL.breadcrumbAtIdx(0)).hasText('Vault', 'Breadcrumb trail is displayed correctly');
+    assert
+      .dom(GENERAL.currentBreadcrumb('Namespaces'))
+      .hasText('Namespaces', 'Namespace breadcrumb trail is displayed correctly');
   });
 
   test('the route should update namespace list after create/delete WITH manual refresh in the CLI', async function (assert) {

@@ -303,7 +303,7 @@ jobs:
         run: echo "ui-hash=$(git ls-tree HEAD ui --object-only)" | tee -a "$GITHUB_OUTPUT"
       - name: Set up UI asset cache
         id: cache-ui-assets
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           enableCrossOsArchive: true
           lookup-only: true
@@ -312,12 +312,18 @@ jobs:
           # Never do a partial restore of the web_ui if we don't get a cache hit.
           key: ui-${{ steps.ui-hash.outputs.ui-hash }}
       - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
-        name: Set up node and yarn
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        name: Install PNPM
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+        with:
+          run_install: false
+          package_json_file: './ui/package.json'
+      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
+        name: Set up node and pnpm
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: ui/package.json
-          cache: yarn
-          cache-dependency-path: ui/yarn.lock
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
       - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
         name: Build UI
         run: make ci-build-ui
@@ -389,17 +395,20 @@ jobs:
   hcp-image:
     if: |
       needs.setup.outputs.is-ent-branch == 'true' &&
-      needs.setup.outputs.workflow-trigger == 'pull_request' &&
-      (
-        contains(fromJSON(needs.setup.outputs.labels), 'hcp/build-image') ||
-        contains(fromJSON(needs.setup.outputs.labels), 'hcp/test')
+      needs.setup.outputs.workflow-trigger == 'schedule' ||
+      ( needs.setup.outputs.workflow-trigger == 'pull_request' &&
+        (
+          contains(fromJSON(needs.setup.outputs.labels), 'hcp/build-image') ||
+          contains(fromJSON(needs.setup.outputs.labels), 'hcp/test')
+        )
       )
     needs:
       - setup
       - artifacts-ent
     uses: ./.github/workflows/build-hcp-image.yml
     with:
-      pull-request: ${{ github.event.pull_request.number }}
+      pull-request: ${{ needs.setup.outputs.workflow-trigger == 'pull_request' && github.event.pull_request.number || '' }}
+      branch: ${{ needs.setup.outputs.workflow-trigger == 'schedule' && 'main' || '' }}
       create-aws-image: true
       create-azure-image: false
       hcp-environment: int
@@ -475,6 +484,7 @@ jobs:
       - hcp-image
     uses: ./.github/workflows/test-run-enos-scenario-cloud.yml
     with:
+      hcp-environment: int
       product-version: ${{ fromJSON(needs.hcp-image.outputs.image).product_version }}
 
   completed-successfully:
@@ -587,11 +597,11 @@ jobs:
                 text:
                   type: mrkdwn
                   text: |
-                    ${{ needs.setup.result != 'failure' && ':white_check_mark:' || ':x:' }} Setup
-                    ${{ needs.ui.result != 'failure' && ':white_check_mark:' || ':x:' }} Build UI
-                    ${{ (needs.artifacts-ent.result != 'failure' && needs.artifacts-ce.result != 'failure') && ':white_check_mark:' || ':x:' }} Build Vault Artifacts
-                    ${{ needs.test.result != 'failure' && ':white_check_mark:' || ':x:' }} Enos package test scenarios
-                    ${{ needs.test-containers.result != 'failure' && ':white_check_mark:' || ':x:' }} Enos container test scenarios
+                    ${{ needs.setup.result           == 'failure' && ':x: Setup'                         || '' }}
+                    ${{ needs.ui.result              == 'failure' && ':x: Build UI'                      || '' }}
+                    ${{ needs.test.result            == 'failure' && ':x: Enos package test scenarios'   || '' }}
+                    ${{ needs.test-containers.result == 'failure' && ':x: Enos container test scenarios' || '' }}
+                    ${{ (needs.artifacts-ent.result == 'failure' || needs.artifacts-ce.result == 'failure') && ':x: Build Vault Artifacts' || '' }}
                 accessory:
                   type: button
                   text:

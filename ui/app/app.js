@@ -24,12 +24,24 @@ export default class App extends Application {
           'custom-messages',
           'api',
           'capabilities',
+          // services needed for tools sidebar component
+          'permissions',
+          'current-cluster',
+          '-portal',
         ],
+        externalRoutes: {
+          vault: 'vault.cluster',
+          tool: 'vault.cluster.tools.tool',
+          messages: 'vault.cluster.config-ui.messages',
+          openApiExplorer: 'vault.cluster.tools.open-api-explorer',
+          loginSettings: 'vault.cluster.config-ui.login-settings',
+        },
       },
     },
     'open-api-explorer': {
       dependencies: {
         services: ['auth', 'flash-messages', 'namespace', { 'app-router': 'router' }, 'version'],
+        externalRoutes: { vault: 'vault.cluster' },
       },
     },
     replication: {
@@ -54,14 +66,14 @@ export default class App extends Application {
     kmip: {
       dependencies: {
         services: [
+          'api',
           'auth',
+          'capabilities',
           'download',
           'flash-messages',
           'namespace',
           'path-help',
           { 'app-router': 'router' },
-          'store',
-          'pagination',
           'version',
           'secret-mount-path',
         ],
@@ -134,6 +146,7 @@ export default class App extends Application {
           secrets: 'vault.cluster.secrets.backends',
           externalMountIssuer: 'vault.cluster.secrets.backend.pki.issuers.issuer.details',
           secretsListRootConfiguration: 'vault.cluster.secrets.backend.configuration',
+          secretsGeneralSettingsConfiguration: 'vault.cluster.secrets.backend.configuration.general-settings',
         },
       },
     },

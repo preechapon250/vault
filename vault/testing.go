@@ -270,6 +270,7 @@ func TestCoreWithSealAndUINoCleanup(t testing.TB, opts *CoreConfig) *Core {
 	}
 
 	conf.ActivityLogConfig = opts.ActivityLogConfig
+	conf.BillingConfig = opts.BillingConfig
 	testApplyEntBaseConfig(conf, opts)
 
 	c, err := NewCore(conf)
@@ -1546,6 +1547,7 @@ func NewTestCluster(t testing.TB, base *CoreConfig, opts *TestClusterOptions) *T
 		coreConfig.DevToken = base.DevToken
 		coreConfig.RecoveryMode = base.RecoveryMode
 		coreConfig.ActivityLogConfig = base.ActivityLogConfig
+		coreConfig.BillingConfig = base.BillingConfig
 		coreConfig.EnableResponseHeaderHostname = base.EnableResponseHeaderHostname
 		coreConfig.EnableResponseHeaderRaftNodeID = base.EnableResponseHeaderRaftNodeID
 		coreConfig.RollbackPeriod = base.RollbackPeriod
@@ -1966,8 +1968,12 @@ func (testCluster *TestCluster) newCore(t testing.TB, idx int, coreConfig *CoreC
 		localConfig.Seal.SetCore(c)
 	}
 
+	// Ent specific test config for licensing
 	// Set test public keys in the core for tests that call license reloads
-	c.testSetTestPubKeys(localConfig.LicensingConfig.AdditionalPublicKeys)
+	c.testSetTestPubKeys(localConfig)
+
+	// Set test license issuer  options in the core for tests that call license reloads
+	c.testSetTestIssuerOptions(localConfig)
 
 	return cleanupFunc, c, localConfig, handler
 }
